@@ -1,0 +1,36 @@
+M=64;
+k=log2(M);
+N=2048;
+Nd=1200;
+numSymb=14;
+x=randi([0, 1], 100800, 1);
+x = double(x);
+z=modulate(qammod('M',64,'InputType','Bit'),x);
+y=reshape(z,Nd, numSymb);
+[len, numSymb] = size(y);     
+tmp = complex(zeros(N, numSymb));     
+tmp(N/2-len/2+1:N/2, :) = y(1:len/2, :);    
+tmp(N/2+2:N/2+1+len/2, :) = y(len/2+1:len, :);    
+tmp = [tmp(1:N/2, :);tmp(N/2+1:N, :)];
+y=ifft(tmp);
+y=y(:);
+EbNo=0:1:15;
+for n=1:length(EbNo)
+    snr(n)=EbNo(n)+10*log10(k);
+    ynoisy=awgn(y,snr(n),'measured');
+    out=reshape(ynoisy,N, numSymb);
+    out=fft(out);
+    out1 = complex(zeros(Nd, numSymb)); 
+    out1(1:600,:)=out(N/2-len/2+1:N/2, :);
+    out1(601:1200,:)=out(N/2+2:N/2+1+len/2, :);
+    out1= [out1(1:600, :); out1(601:1200, :)];
+    out1=out1(:);
+    z=demodulate(qamdemod('M',64 ,'OutputType','Bit'),out1);
+    [nErrors(n),BITBER(n)]=biterr(x,z);
+end
+disp(nErrors);
+disp(BITBER);
+semilogy(EbNo,BITBER,'r*');
+title('误码率性能（64QAM）');
+xlabel('Eb/No(dB)');
+ylabel('误比特率');
